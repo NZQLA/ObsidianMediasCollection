@@ -38,7 +38,7 @@ interface IMediaDetailSettings
 }
 
 // all the settings for this plugin
-interface IMultimediaCollectionSettings
+interface IMediasCollectionSettings
 {
 	mySetting: string;
 	video: IVideoSettings;
@@ -47,7 +47,7 @@ interface IMultimediaCollectionSettings
 }
 
 // the  default settings for this plugin
-const DEFAULT_SETTINGS: IMultimediaCollectionSettings =
+const DEFAULT_SETTINGS: IMediasCollectionSettings =
 {
 	mySetting: 'default',
 
@@ -115,15 +115,15 @@ enum MediaType
 
 
 
-// #region Plugin MultimediaCollectionPlugin
-export default class MultimediaCollectionPlugin extends Plugin
+// #region Plugin MediasCollectionPlugin
+export default class MediasCollectionPlugin extends Plugin
 {
-	settings: IMultimediaCollectionSettings;
+	settings: IMediasCollectionSettings;
 
 	async onload()
 	{
 		await this.loadSettings();
-		console.log('on Loading Multimedia Collection Plugin');
+		console.log('on Loading Medias Collection Plugin');
 
 		this.registerMarkdownCodeBlockProcessor('medias', (source, el, ctx) =>
 		{
@@ -235,15 +235,15 @@ export default class MultimediaCollectionPlugin extends Plugin
 
 					// get the media type
 					let mediaType = MediaType.UnKnown;
-					if (mediaData.mediaFile.extension.endsWith('.png') || mediaData.mediaFile.extension.endsWith('.jpg') || mediaData.mediaFile.extension.endsWith('.gif') || mediaData.mediaFile.extension.endsWith('.jpeg'))
+					if (mediaData.mediaFile.extension.endsWith('png') || mediaData.mediaFile.extension.endsWith('jpg') || mediaData.mediaFile.extension.endsWith('gif') || mediaData.mediaFile.extension.endsWith('jpeg'))
 					{
 						mediaType = MediaType.Image;
 					}
-					else if (mediaData.mediaFile.extension.endsWith('.mp4'))
+					else if (mediaData.mediaFile.extension.endsWith('mp4'))
 					{
 						mediaType = MediaType.Video;
 					}
-					else if (mediaData.mediaFile.extension.endsWith('.mp3'))
+					else if (mediaData.mediaFile.extension.endsWith('mp3'))
 					{
 						mediaType = MediaType.Audio;
 					}
@@ -532,9 +532,9 @@ class SampleModal extends Modal
 // the setting tab for this plugin
 class MySettingTab extends PluginSettingTab
 {
-	plugin: MultimediaCollectionPlugin;
+	plugin: MediasCollectionPlugin;
 
-	constructor(app: App, plugin: MultimediaCollectionPlugin)
+	constructor(app: App, plugin: MediasCollectionPlugin)
 	{
 		super(app, plugin);
 		this.plugin = plugin;
