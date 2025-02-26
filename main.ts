@@ -1,30 +1,81 @@
+/* eslint-disable prefer-const */
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-empty-interface */
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
 
 // Remember to rename these classes and interfaces!
 
-interface MultimediaCollectionSettings {
+// #region Settings
+// config some video options 
+interface IVideoSettings
+{
+	// auto play the video
+	autoPlay: boolean;
+
+	// loop the video
+	loop: boolean;
+
+	// muted the video
+	muted: boolean;
+}
+
+// settints for the media detail 
+interface IMediaDetailSettings
+{
+	// show the detail of the media or not
+	enableDetail: boolean;
+}
+
+// all the settings for this plugin
+interface IMultimediaCollectionSettings
+{
 	mySetting: string;
+	video: IVideoSettings;
+	detail: IMediaDetailSettings;
 }
 
-const DEFAULT_SETTINGS: MultimediaCollectionSettings = {
-	mySetting: 'default'
+// the  default settings for this plugin
+const DEFAULT_SETTINGS: IMultimediaCollectionSettings =
+{
+	mySetting: 'default',
+	video:
+	{
+		autoPlay: true,
+		loop: true,
+		muted: true
+	},
+	detail:
+	{
+		enableDetail: true
+	}
 }
+// #endregion
 
+
+
+
+// #region data
 // The media data info; 0: originPath, 1: purePath, 2: fullPath, 3: isValid, 4: mediaFile
 type MediaData = [originPath: string, purePath: string, fullPath: string,
 	isValid: boolean, mediaFile: TFile | null,
 	medialName: string,
 	recsPath: string];
+// #endregion
 
 
-export default class MultimediaCollectionPlugin extends Plugin {
-	settings: MultimediaCollectionSettings;
 
-	async onload() {
+// #region Plugin MultimediaCollectionPlugin
+export default class MultimediaCollectionPlugin extends Plugin
+{
+	settings: IMultimediaCollectionSettings;
+
+	async onload()
+	{
 		await this.loadSettings();
 		console.log('on Loading Multimedia Collection Plugin');
 
-		this.registerMarkdownCodeBlockProcessor('medias', (source, el, ctx) => {
+		this.registerMarkdownCodeBlockProcessor('medias', (source, el, ctx) =>
+		{
 			// cached the current  media index  in the view
 			let indexMedia = 0;
 
@@ -35,8 +86,9 @@ export default class MultimediaCollectionPlugin extends Plugin {
 			let mediasData: MediaData[] = [];
 
 
-			// Try Get all media data from the rows
-			for (let i = 0; i < rows.length; i++) {
+			//  #region Try Get all media data from the rows
+			for (let i = 0; i < rows.length; i++)
+			{
 				let row = rows[i];
 				let mediaData: MediaData = [row, '', '', false, null, '', ''];
 				// remove the white space at the beginning and end of the row
@@ -50,7 +102,8 @@ export default class MultimediaCollectionPlugin extends Plugin {
 
 				// remove all chars from the last  '|'  char
 				let index = mediaPath.lastIndexOf('|');
-				if (index != -1) {
+				if (index != -1)
+				{
 					mediaPath = mediaPath.substring(0, index);
 				}
 				// save the pure path
@@ -58,7 +111,8 @@ export default class MultimediaCollectionPlugin extends Plugin {
 
 				// try load the media file 
 				let mediaFile = this.app.metadataCache.getFirstLinkpathDest(mediaPath, '');
-				if (mediaFile) {
+				if (mediaFile)
+				{
 					// save the full path
 					mediaData[2] = mediaFile.path;
 					mediaData[3] = true;
@@ -70,6 +124,9 @@ export default class MultimediaCollectionPlugin extends Plugin {
 
 
 			}
+			// #endregion
+
+
 
 
 			// get the current media data
@@ -77,12 +134,14 @@ export default class MultimediaCollectionPlugin extends Plugin {
 			let mediaDataCur = mediasData[indexMedia];
 
 			// generate the current media process info
-			const generateIndexInfo = (): string => {
+			const generateIndexInfo = (): string =>
+			{
 				return `${indexMedia + 1}/${mediasData.length}`;
 			}
 
 			// generate the current media process info
-			const generateAllMediaInfo = (): string => {
+			const generateAllMediaInfo = (): string =>
+			{
 				return `${mediasData.length} Pictures`;
 			}
 
@@ -101,7 +160,8 @@ export default class MultimediaCollectionPlugin extends Plugin {
 			// show the picture
 			let currentMediaImg = currentMedia.createEl('img', { attr: { src: mediaDataCur[6] } });
 			// show the video
-			let currentMediaVideo = currentMedia.createEl('video', { cls: 'currentMediaVideo', attr: { controls: true } });
+			//let currentMediaVideo = currentMedia.createEl('video', { cls: 'currentMediaVideo', attr: { controls: true, autoplay: true, muted: true, loop: true } });
+			let currentMediaVideo = currentMedia.createEl('video', { cls: 'currentMediaVideo', attr: { controls: true, autoplay: this.settings.video.autoPlay, muted: this.settings.video.muted, loop: this.settings.video.loop } });
 			let videoSource = currentMediaVideo.createEl('source', { attr: { src: mediaDataCur[6], type: 'video/mp4' } });
 			// hide the video at first
 			currentMediaVideo.style.display = 'none';
@@ -110,8 +170,10 @@ export default class MultimediaCollectionPlugin extends Plugin {
 
 
 			// show the media  at giving index
-			const showMediaAtIndex = (_indexMedia: number) => {
-				if (_indexMedia < 0 || _indexMedia >= mediasData.length) {
+			const showMediaAtIndex = (_indexMedia: number) =>
+			{
+				if (_indexMedia < 0 || _indexMedia >= mediasData.length)
+				{
 					return;
 				}
 
@@ -127,13 +189,21 @@ export default class MultimediaCollectionPlugin extends Plugin {
 				// currentMediaPanel.setText(generateIndexInfo());
 
 
-				// 判断资源类型并显示相应的元素
-				if (mediaDataCur[2].endsWith('.mp4')) {
+				//  confirm if the media is video or not
+				if (mediaDataCur[2].endsWith('.mp4'))
+				{
 					currentMediaImg.style.display = 'none';
 					currentMediaVideo.style.display = 'block';
 					videoSource.setAttribute('src', mediaDataCur[6]);
+
+					// use the vedio settings 
+					currentMediaVideo.autoplay = this.settings.video.autoPlay;
+					currentMediaVideo.muted = this.settings.video.muted;
+					currentMediaVideo.loop = this.settings.video.loop;
+
 					currentMediaVideo.load();
-				} else {
+				} else
+				{
 					currentMediaImg.style.display = 'block';
 					currentMediaVideo.style.display = 'none';
 					currentMediaImg.setAttribute('src', mediaDataCur[6]);
@@ -159,7 +229,8 @@ export default class MultimediaCollectionPlugin extends Plugin {
 			};
 
 			// refresh the media panel
-			const refreshMediaPanel = () => {
+			const refreshMediaPanel = () =>
+			{
 				showMediaAtIndex(indexMedia);
 			}
 
@@ -167,11 +238,13 @@ export default class MultimediaCollectionPlugin extends Plugin {
 			refreshMediaPanel();
 
 			// Set call back for btns 
-			btnLast.onclick = () => {
+			btnLast.onclick = () =>
+			{
 				showMediaAtIndex(indexMedia - 1);
 			};
 
-			btnNext.onclick = () => {
+			btnNext.onclick = () =>
+			{
 				showMediaAtIndex(indexMedia + 1);
 			};
 
@@ -231,7 +304,7 @@ export default class MultimediaCollectionPlugin extends Plugin {
 		// });
 
 		// // This adds a settings tab so the user can configure various aspects of the plugin
-		// this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new SampleSettingTab(this.app, this));
 
 		// // If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// // Using this function will automatically remove the event listener when this plugin is disabled.
@@ -243,57 +316,140 @@ export default class MultimediaCollectionPlugin extends Plugin {
 		// this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
 	}
 
-	onunload() {
+	onunload()
+	{
 		console.log('on onunload Multimedia Collection Plugin');
 	}
 
-	async loadSettings() {
+	async loadSettings()
+	{
 		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
 	}
 
-	async saveSettings() {
+	async saveSettings()
+	{
 		await this.saveData(this.settings);
 	}
 }
+// #endregion
 
-class SampleModal extends Modal {
-	constructor(app: App) {
+
+
+// #region others
+
+class SampleModal extends Modal
+{
+	constructor(app: App)
+	{
 		super(app);
 	}
 
-	onOpen() {
+	onOpen()
+	{
 		const { contentEl } = this;
 		contentEl.setText('Woah!');
 	}
 
-	onClose() {
+	onClose()
+	{
 		const { contentEl } = this;
 		contentEl.empty();
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab {
+class SampleSettingTab extends PluginSettingTab
+{
 	plugin: MultimediaCollectionPlugin;
 
-	constructor(app: App, plugin: MultimediaCollectionPlugin) {
+	constructor(app: App, plugin: MultimediaCollectionPlugin)
+	{
 		super(app, plugin);
 		this.plugin = plugin;
 	}
 
-	display(): void {
+	display(): void
+	{
 		const { containerEl } = this;
-
 		containerEl.empty();
 
+
+		//new Setting(containerEl)
+		//	.setName('MultimediaCollectionSettings')
+		//	.setDesc('It\'s a secret')
+		//	.addText(text => text
+		//		.setPlaceholder('Enter your secret')
+		//		.setValue(this.plugin.settings.mySetting)
+		//		.onChange(async (value) =>
+		//		{
+		//			this.plugin.settings.mySetting = value;
+		//			await this.plugin.saveSettings();
+		//		}));
+
+
+
 		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
+			.setName('MultimediaCollectionSettings')
+			.setHeading();
+
+		// video settings
+		new Setting(containerEl).setName("Video").setHeading();
+		new Setting(containerEl)
+			.setName('Auto Play')
+			.setDesc('Auto play the video')
+			.addToggle((toggle) =>
+			{
+				toggle.setValue(this.plugin.settings.video.autoPlay)
+					.onChange(async (value) =>
+					{
+						this.plugin.settings.video.autoPlay = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName('Loop')
+			.setDesc('Loop the video')
+			.addToggle((toggle) =>
+			{
+				toggle.setValue(this.plugin.settings.video.loop)
+					.onChange(async (value) =>
+					{
+						this.plugin.settings.video.loop = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName('Muted')
+			.setDesc('Muted the video')
+			.addToggle((toggle) =>
+			{
+				toggle.setValue(this.plugin.settings.video.muted)
+					.onChange(async (value) =>
+					{
+						this.plugin.settings.video.muted = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		// detail settings
+		new Setting(containerEl).setName("Detail").setHeading();
+		new Setting(containerEl)
+			.setName('Enable Detail')
+			.setDesc('Show the detail of the media or not')
+			.addToggle((toggle) =>
+			{
+				toggle.setValue(this.plugin.settings.detail.enableDetail)
+					.onChange(async (value) =>
+					{
+						this.plugin.settings.detail.enableDetail = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+
+
+
 	}
 }
+// #endregion
