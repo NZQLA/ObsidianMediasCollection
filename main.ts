@@ -6,6 +6,14 @@ import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Set
 // Remember to rename these classes and interfaces!
 
 // #region Settings
+
+interface ILogSettings
+{
+	LogIfLoadFileFailed: boolean,
+	ShowAllFilesLoaded: boolean,
+}
+
+
 // config some video options 
 interface IVideoSettings
 {
@@ -35,12 +43,14 @@ interface IMultimediaCollectionSettings
 	mySetting: string;
 	video: IVideoSettings;
 	detail: IMediaDetailSettings;
+	log: ILogSettings;
 }
 
 // the  default settings for this plugin
 const DEFAULT_SETTINGS: IMultimediaCollectionSettings =
 {
 	mySetting: 'default',
+
 	video:
 	{
 		autoPlay: true,
@@ -48,9 +58,16 @@ const DEFAULT_SETTINGS: IMultimediaCollectionSettings =
 		loop: true,
 		muted: true
 	},
+
 	detail:
 	{
 		enableDetail: true
+	},
+
+	log:
+	{
+		LogIfLoadFileFailed: true,
+		ShowAllFilesLoaded: false
 	}
 }
 // #endregion
@@ -60,11 +77,29 @@ const DEFAULT_SETTINGS: IMultimediaCollectionSettings =
 
 // #region data
 // The media data info; 0: originPath, 1: mediaType, 2: purePath, 3: fullPath, 4: isValid, 5: mediaFile
-type MediaData = [originPath: string, mediaType: MediaType, purePath: string, fullPath: string,
-	isValid: boolean, mediaFile: TFile | null,
-	medialName: string,
-	recsPath: string,
-	detailInfo: string];
+// The media data info; 0: originPath, 1: mediaType, 2: purePath, 3: fullPath, 4: isValid, 5: mediaFile
+interface IMediaData
+{
+	// The original path of the media
+	originPath: string;
+	// The type of the media
+	mediaType: MediaType;
+	// The pure path of the media
+	purePath: string;
+	// The full path of the media
+	path: string;
+	// Whether the media is valid
+	isValid: boolean;
+	// The media file
+	mediaFile: TFile | null;
+	// The name of the media
+	Name: string;
+	// The path to the media resources
+	recsPath: string;
+	// The detailed information of the media
+	detailInfo: string;
+}
+
 
 // the media type
 enum MediaType
@@ -99,7 +134,7 @@ export default class MultimediaCollectionPlugin extends Plugin
 			const rows = source.split('\n').filter((row) => row.length > 0);
 
 			// all the medias info from the rows, some one  maybe not valid !
-			let mediasData: MediaData[] = [];
+			let mediasData: IMediaData[] = [];
 
 
 			// convert the newlines to html , 'AAA\n'BB --> 'AAA<br>BB'
@@ -150,15 +185,26 @@ export default class MultimediaCollectionPlugin extends Plugin
 			for (let i = 0; i < rows.length; i++)
 			{
 				let originMediaInfo = rows[i].trim();
-				let mediaData: MediaData = [originMediaInfo, MediaType.UnKnown, '', '', false, null, '', '', ''];
+				//let mediaData: IMediaData = [originMediaInfo, MediaType.UnKnown, '', '', false, null, '', '', ''];
+				let mediaData: IMediaData = {
+					originPath: originMediaInfo,
+					mediaType: MediaType.UnKnown,
+					purePath: '',
+					path: '',
+					isValid: false,
+					mediaFile: null,
+					Name: '',
+					recsPath: '',
+					detailInfo: ''
+				};
 				// remove the white space at the beginning and end of the row
 				let mediaPath = originMediaInfo;
 				let splitByDetail = originMediaInfo.split('//');
 				if (splitByDetail.length > 1)
 				{
-					mediaData[8] = convertNewlinesToHtml(splitByDetail[1]);
-					console.log(`${splitByDetail[1]}--->${mediaData[8]}`);
-					mediaPath = splitByDetail[0];
+					mediaData.detailInfo = convertNewlinesToHtml(splitByDetail[1].trim());
+					//console.log(`${splitByDetail[1]}--->${mediaData.detailInfo}`);
+					mediaPath = splitByDetail[0].trim();
 				}
 
 				// remove all '[' / ']' in the rows
@@ -174,41 +220,48 @@ export default class MultimediaCollectionPlugin extends Plugin
 					mediaPath = mediaPath.substring(0, index);
 				}
 				// save the pure path
-				mediaData[2] = mediaPath;
+				mediaData.purePath = mediaPath;
 
 				// try load the media file 
 				let mediaFile = this.app.metadataCache.getFirstLinkpathDest(mediaPath, '');
 				if (mediaFile)
 				{
 					// save the full path
-					mediaData[3] = mediaFile.path;
-					mediaData[4] = true;
-					mediaData[5] = mediaFile;
-					mediaData[6] = mediaFile.basename;
-					mediaData[7] = this.app.vault.adapter.getResourcePath(mediaData[3]);
+					mediaData.path = mediaFile.path;
+					mediaData.isValid = true;
+					mediaData.mediaFile = mediaFile;
+					mediaData.Name = mediaFile.basename;
+					mediaData.recsPath = this.app.vault.adapter.getResourcePath(mediaData.path);
 
 					// get the media type
 					let mediaType = MediaType.UnKnown;
-					if (mediaData[3].endsWith('.png') || mediaData[3].endsWith('.jpg') || mediaData[3].endsWith('.gif') || mediaData[3].endsWith('.jpeg'))
+					if (mediaData.mediaFile.extension.endsWith('.png') || mediaData.mediaFile.extension.endsWith('.jpg') || mediaData.mediaFile.extension.endsWith('.gif') || mediaData.mediaFile.extension.endsWith('.jpeg'))
 					{
 						mediaType = MediaType.Image;
 					}
-					else if (mediaData[3].endsWith('.mp4'))
+					else if (mediaData.mediaFile.extension.endsWith('.mp4'))
 					{
 						mediaType = MediaType.Video;
 					}
-					else if (mediaData[3].endsWith('.mp3'))
+					else if (mediaData.mediaFile.extension.endsWith('.mp3'))
 					{
 						mediaType = MediaType.Audio;
 					}
 
-					mediaData[1] = mediaType;
-					if (mediaData[1] == MediaType.Video)
+					mediaData.mediaType = mediaType;
+					if (mediaData.mediaType == MediaType.Video)
 					{
-						mediaData[8] = convertVideoTimeSpans(mediaData[8]);
+						mediaData.detailInfo = convertVideoTimeSpans(mediaData.detailInfo);
 					}
 
 					mediasData.push(mediaData);
+				}
+				else
+				{
+					if (this.settings.log.LogIfLoadFileFailed)
+					{
+						console.log(`Load File Failed:${mediaPath} originPath:${mediaData.originPath}!!!!!!!`);
+					}
 				}
 
 
@@ -231,7 +284,7 @@ export default class MultimediaCollectionPlugin extends Plugin
 			// generate the current media process info
 			const generateAllMediaInfo = (): string =>
 			{
-				return `${mediasData.length} Pictures`;
+				return `${mediasData.length} Medias`;
 			}
 
 
@@ -247,7 +300,7 @@ export default class MultimediaCollectionPlugin extends Plugin
 
 
 			let rootMediaView = el.createEl('div', { cls: 'rootMediaView' });
-			let pathTemp = mediaDataCur[7];
+			let pathTemp = mediaDataCur.recsPath;
 			let currentMediaPanel = rootMediaView.createEl('div', { cls: 'currentMediaPanel' });
 			let titlePanel = currentMediaPanel.createEl('div', { cls: 'titlePanel' });
 			let mediaContainer = currentMediaPanel.createEl('div', { cls: 'mediaContainer' });
@@ -256,11 +309,11 @@ export default class MultimediaCollectionPlugin extends Plugin
 			let currentMedia = mediaContainer.createEl('div', { cls: 'currentMedia' });
 			let btnNext = mediaContainer.createEl('button', { text: '>>', cls: 'btnNext' });
 			// show the picture
-			let currentMediaImg = currentMedia.createEl('img', { attr: { src: mediaDataCur[7] } });
+			let currentMediaImg = currentMedia.createEl('img', { attr: { src: mediaDataCur.recsPath } });
 			// show the video
 			//let currentMediaVideo = currentMedia.createEl('video', { cls: 'currentMediaVideo', attr: { controls: true, autoplay: true, muted: true, loop: true } });
 			let currentMediaVideo = currentMedia.createEl('video', { cls: 'currentMediaVideo', attr: { controls: true, autoplay: this.settings.video.autoPlay, muted: this.settings.video.muted, loop: this.settings.video.loop } });
-			let videoSource = currentMediaVideo.createEl('source', { attr: { src: mediaDataCur[7], type: 'video/mp4' } });
+			let videoSource = currentMediaVideo.createEl('source', { attr: { src: mediaDataCur.recsPath, type: 'video/mp4' } });
 			// hide the video at first
 			currentMediaVideo.style.display = 'none';
 			// add details info panel , will show the details of the media, such as note of this media
@@ -282,7 +335,7 @@ export default class MultimediaCollectionPlugin extends Plugin
 				// // refresh the media title 
 				// currentMediaPanel.setText(mediaDataCur[6]);
 				// // refresh the media path for the img
-				// pathTemp = mediaDataCur[7];
+				// pathTemp = mediaDataCur.recsPath;
 				// // refresh the img src
 				// currentMediaImg.setAttribute('src', '');
 
@@ -290,11 +343,11 @@ export default class MultimediaCollectionPlugin extends Plugin
 
 
 				//  confirm if the media is video or not
-				if (mediaDataCur[3].endsWith('.mp4'))
+				if (mediaDataCur.path.endsWith('.mp4'))
 				{
 					currentMediaImg.style.display = 'none';
 					currentMediaVideo.style.display = 'block';
-					videoSource.setAttribute('src', mediaDataCur[7]);
+					videoSource.setAttribute('src', mediaDataCur.recsPath);
 
 					// use the vedio settings 
 					currentMediaVideo.autoplay = this.settings.video.autoPlay;
@@ -306,18 +359,18 @@ export default class MultimediaCollectionPlugin extends Plugin
 				{
 					currentMediaImg.style.display = 'block';
 					currentMediaVideo.style.display = 'none';
-					currentMediaImg.setAttribute('src', mediaDataCur[7]);
+					currentMediaImg.setAttribute('src', mediaDataCur.recsPath);
 				}
 
-				titlePanel.setText(`[${mediaDataCur[6]}] <${indexMedia}/${mediasData.length}>`);
+				titlePanel.setText(`[${mediaDataCur.Name}] <${indexMedia}/${mediasData.length}>`);
 
 				// show the detail of the media
 				if (this.settings.detail.enableDetail)
 				{
 					detailPanel.style.display = 'block';
-					//detailPanel.setText(`name:${mediaDataCur[6]}\nPathFull:${mediaDataCur[7]}`);
+					//detailPanel.setText(`name:${mediaDataCur[6]}\nPathFull:${mediaDataCur.recsPath}`);
 					//detailPanel.setText(`${mediaDataCur[8]}`);
-					detailPanel.innerHTML = `${mediaDataCur[8]}`;
+					detailPanel.innerHTML = `${mediaDataCur.detailInfo}`;
 				}
 				else
 				{
@@ -325,7 +378,7 @@ export default class MultimediaCollectionPlugin extends Plugin
 				}
 
 				// currentMediaImg.setAttribute('src', pathTemp);
-				// currentMediaImg.setAttribute('src', mediaDataCur[7]);
+				// currentMediaImg.setAttribute('src', mediaDataCur.recsPath);
 
 
 
@@ -338,7 +391,8 @@ export default class MultimediaCollectionPlugin extends Plugin
 				// currentMedia.innerHTML = ''; // 清空当前媒体内容
 				// currentMediaImg = currentMedia.createEl('img', { attr: { src: pathTemp } });
 
-				console.log(`Show media[${_indexMedia}] ${mediaDataCur[6]} fullPath[${mediaDataCur[3]}] recsPath:${pathTemp} 之前是[${indexMedia}] ${mediasData[indexMedia][6]} ${mediasData[indexMedia][7]} fullPath[${mediasData[indexMedia][3]}]`);
+				//console.log(`Show media[${_indexMedia}] ${mediaDataCur.Name} fullPath[${mediaDataCur.path}] recsPath:${pathTemp} 之前是[${indexMedia}] ${mediasData[indexMedia].Name} ${mediasData[indexMedia].recsPath} fullPath[${mediasData[indexMedia].path}]`);
+
 				// refresh the indexMedia
 				indexMedia = _indexMedia;
 			};
@@ -365,7 +419,10 @@ export default class MultimediaCollectionPlugin extends Plugin
 
 
 			// log all lines 
-			console.log('mediasData:', mediasData);
+			if (this.settings.log.ShowAllFilesLoaded)
+			{
+				console.log('mediasData:', mediasData);
+			}
 		});
 
 
@@ -419,7 +476,7 @@ export default class MultimediaCollectionPlugin extends Plugin
 		// });
 
 		// // This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new MySettingTab(this.app, this));
 
 		// // If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
 		// // Using this function will automatically remove the event listener when this plugin is disabled.
@@ -472,7 +529,8 @@ class SampleModal extends Modal
 	}
 }
 
-class SampleSettingTab extends PluginSettingTab
+// the setting tab for this plugin
+class MySettingTab extends PluginSettingTab
 {
 	plugin: MultimediaCollectionPlugin;
 
@@ -506,7 +564,7 @@ class SampleSettingTab extends PluginSettingTab
 			.setName('MultimediaCollectionSettings')
 			.setHeading();
 
-		// video settings
+		// #region video settings
 		new Setting(containerEl).setName("Video").setHeading();
 		new Setting(containerEl)
 			.setName('Auto Play')
@@ -563,6 +621,7 @@ class SampleSettingTab extends PluginSettingTab
 						await this.plugin.saveSettings();
 					});
 			});
+		// #endregion
 
 		// detail settings
 		new Setting(containerEl).setName("Detail").setHeading();
@@ -579,6 +638,32 @@ class SampleSettingTab extends PluginSettingTab
 					});
 			});
 
+
+		// Log
+		new Setting(containerEl).setName("Log").setHeading();
+		new Setting(containerEl)
+			.setName('Log If Load File Failed')
+			.addToggle((toggle) =>
+			{
+				toggle.setValue(this.plugin.settings.log.LogIfLoadFileFailed)
+					.onChange(async (value) =>
+					{
+						this.plugin.settings.log.LogIfLoadFileFailed = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName('Show All Files Loaded')
+			.addToggle((toggle) =>
+			{
+				toggle.setValue(this.plugin.settings.log.ShowAllFilesLoaded)
+					.onChange(async (value) =>
+					{
+						this.plugin.settings.log.ShowAllFilesLoaded = value;
+						await this.plugin.saveSettings();
+					});
+			});
 
 
 
