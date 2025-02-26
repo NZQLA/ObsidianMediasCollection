@@ -59,7 +59,8 @@ const DEFAULT_SETTINGS: IMultimediaCollectionSettings =
 type MediaData = [originPath: string, purePath: string, fullPath: string,
 	isValid: boolean, mediaFile: TFile | null,
 	medialName: string,
-	recsPath: string];
+	recsPath: string,
+	detailInfo: string];
 // #endregion
 
 
@@ -86,13 +87,27 @@ export default class MultimediaCollectionPlugin extends Plugin
 			let mediasData: MediaData[] = [];
 
 
+			// convert the newlines to html , 'AAA\n'BB --> 'AAA<br>BB'
+			const convertNewlinesToHtml = (text: string): string =>
+			{
+				text = text.replace(/\\n/g, '\n');
+				return text.replace(/\n/g, '<br>');
+			}
+
 			//  #region Try Get all media data from the rows
 			for (let i = 0; i < rows.length; i++)
 			{
-				let row = rows[i];
-				let mediaData: MediaData = [row, '', '', false, null, '', ''];
+				let originMediaInfo = rows[i].trim();
+				let mediaData: MediaData = [originMediaInfo, '', '', false, null, '', '', ''];
 				// remove the white space at the beginning and end of the row
-				let mediaPath = row.trim();
+				let mediaPath = originMediaInfo;
+				let splitByDetail = originMediaInfo.split('//');
+				if (splitByDetail.length > 1)
+				{
+					mediaData[7] = convertNewlinesToHtml(splitByDetail[1]);
+					console.log(`${splitByDetail[1]}--->${mediaData[7]}`);
+					mediaPath = splitByDetail[0];
+				}
 
 				// remove all '[' / ']' in the rows
 				mediaPath = mediaPath.replace(/\[|\]/g, '');
@@ -151,7 +166,7 @@ export default class MultimediaCollectionPlugin extends Plugin
 			let rootMediaView = el.createEl('div', { cls: 'rootMediaView' });
 			let pathTemp = mediaDataCur[6];
 			let currentMediaPanel = rootMediaView.createEl('div', { cls: 'currentMediaPanel' });
-			let titlePanel = currentMediaPanel.createEl('div', { text: generateAllMediaInfo(), cls: 'titlePanel' });
+			let titlePanel = currentMediaPanel.createEl('div', { cls: 'titlePanel' });
 			let mediaContainer = currentMediaPanel.createEl('div', { cls: 'mediaContainer' });
 
 			let btnLast = mediaContainer.createEl('button', { text: '<<', cls: 'btnLast' });
@@ -165,6 +180,8 @@ export default class MultimediaCollectionPlugin extends Plugin
 			let videoSource = currentMediaVideo.createEl('source', { attr: { src: mediaDataCur[6], type: 'video/mp4' } });
 			// hide the video at first
 			currentMediaVideo.style.display = 'none';
+			// add details info panel , will show the details of the media, such as note of this media
+			let detailPanel = rootMediaView.createEl('div', { cls: 'detailPanel' });
 
 
 
@@ -207,6 +224,21 @@ export default class MultimediaCollectionPlugin extends Plugin
 					currentMediaImg.style.display = 'block';
 					currentMediaVideo.style.display = 'none';
 					currentMediaImg.setAttribute('src', mediaDataCur[6]);
+				}
+
+				titlePanel.setText(`[${mediaDataCur[5]}] <${indexMedia}/${mediasData.length}>`);
+
+				// show the detail of the media
+				if (this.settings.detail.enableDetail)
+				{
+					detailPanel.style.display = 'block';
+					//detailPanel.setText(`name:${mediaDataCur[5]}\nPathFull:${mediaDataCur[6]}`);
+					//detailPanel.setText(`${mediaDataCur[7]}`);
+					detailPanel.innerHTML = `${mediaDataCur[7]}`;
+				}
+				else
+				{
+					detailPanel.style.display = 'none';
 				}
 
 				// currentMediaImg.setAttribute('src', pathTemp);
