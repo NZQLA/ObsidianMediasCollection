@@ -12,6 +12,9 @@ interface IVideoSettings
 	// auto play the video
 	autoPlay: boolean;
 
+	// pause the video after skip
+	pausePlayAfterSkip: boolean;
+
 	// loop the video
 	loop: boolean;
 
@@ -41,6 +44,7 @@ const DEFAULT_SETTINGS: IMultimediaCollectionSettings =
 	video:
 	{
 		autoPlay: true,
+		pausePlayAfterSkip: false,
 		loop: true,
 		muted: true
 	},
@@ -55,12 +59,23 @@ const DEFAULT_SETTINGS: IMultimediaCollectionSettings =
 
 
 // #region data
-// The media data info; 0: originPath, 1: purePath, 2: fullPath, 3: isValid, 4: mediaFile
-type MediaData = [originPath: string, purePath: string, fullPath: string,
+// The media data info; 0: originPath, 1: mediaType, 2: purePath, 3: fullPath, 4: isValid, 5: mediaFile
+type MediaData = [originPath: string, mediaType: MediaType, purePath: string, fullPath: string,
 	isValid: boolean, mediaFile: TFile | null,
 	medialName: string,
 	recsPath: string,
 	detailInfo: string];
+
+// the media type
+enum MediaType
+{
+	UnKnown,
+	Image,
+	Video,
+	Audio
+}
+
+
 // #endregion
 
 
@@ -94,18 +109,55 @@ export default class MultimediaCollectionPlugin extends Plugin
 				return text.replace(/\n/g, '<br>');
 			}
 
+			// Convert video timestamps into clickable links
+			// Convert video timestamps into clickable links
+			const convertVideoTimeSpans = (text: string): string =>
+			{
+				return text.replace(/(\d{1,2}:\d{2}:\d{2})/g, (match) =>
+				{
+					const parts = match.split(':');
+					const seconds = parseInt(parts[0]) * 3600 + parseInt(parts[1]) * 60 + parseInt(parts[2]);
+					return `<a href="#" class="video-timestamp" data-time="${seconds}">${match}</a>`;
+				});
+			};
+
+			// Register click event for video timestamps
+			this.registerDomEvent(document, 'click', (evt: MouseEvent) =>
+			{
+				const target = evt.target as HTMLElement;
+				if (target && target.classList.contains('video-timestamp'))
+				{
+					evt.preventDefault();
+					const time = parseInt(target.getAttribute('data-time') || '0');
+					const videoElement = document.querySelector('video.currentMediaVideo') as HTMLVideoElement;
+					if (videoElement)
+					{
+						videoElement.currentTime = time;
+						if (this.settings.video.pausePlayAfterSkip)
+						{
+							videoElement.pause();
+						}
+						else
+						{
+							videoElement.play();
+						}
+					}
+				}
+			});
+
+
 			//  #region Try Get all media data from the rows
 			for (let i = 0; i < rows.length; i++)
 			{
 				let originMediaInfo = rows[i].trim();
-				let mediaData: MediaData = [originMediaInfo, '', '', false, null, '', '', ''];
+				let mediaData: MediaData = [originMediaInfo, MediaType.UnKnown, '', '', false, null, '', '', ''];
 				// remove the white space at the beginning and end of the row
 				let mediaPath = originMediaInfo;
 				let splitByDetail = originMediaInfo.split('//');
 				if (splitByDetail.length > 1)
 				{
-					mediaData[7] = convertNewlinesToHtml(splitByDetail[1]);
-					console.log(`${splitByDetail[1]}--->${mediaData[7]}`);
+					mediaData[8] = convertNewlinesToHtml(splitByDetail[1]);
+					console.log(`${splitByDetail[1]}--->${mediaData[8]}`);
 					mediaPath = splitByDetail[0];
 				}
 
@@ -122,18 +174,40 @@ export default class MultimediaCollectionPlugin extends Plugin
 					mediaPath = mediaPath.substring(0, index);
 				}
 				// save the pure path
-				mediaData[1] = mediaPath;
+				mediaData[2] = mediaPath;
 
 				// try load the media file 
 				let mediaFile = this.app.metadataCache.getFirstLinkpathDest(mediaPath, '');
 				if (mediaFile)
 				{
 					// save the full path
-					mediaData[2] = mediaFile.path;
-					mediaData[3] = true;
-					mediaData[4] = mediaFile;
-					mediaData[5] = mediaFile.basename;
-					mediaData[6] = this.app.vault.adapter.getResourcePath(mediaData[2]);
+					mediaData[3] = mediaFile.path;
+					mediaData[4] = true;
+					mediaData[5] = mediaFile;
+					mediaData[6] = mediaFile.basename;
+					mediaData[7] = this.app.vault.adapter.getResourcePath(mediaData[3]);
+
+					// get the media type
+					let mediaType = MediaType.UnKnown;
+					if (mediaData[3].endsWith('.png') || mediaData[3].endsWith('.jpg') || mediaData[3].endsWith('.gif') || mediaData[3].endsWith('.jpeg'))
+					{
+						mediaType = MediaType.Image;
+					}
+					else if (mediaData[3].endsWith('.mp4'))
+					{
+						mediaType = MediaType.Video;
+					}
+					else if (mediaData[3].endsWith('.mp3'))
+					{
+						mediaType = MediaType.Audio;
+					}
+
+					mediaData[1] = mediaType;
+					if (mediaData[1] == MediaType.Video)
+					{
+						mediaData[8] = convertVideoTimeSpans(mediaData[8]);
+					}
+
 					mediasData.push(mediaData);
 				}
 
@@ -161,10 +235,19 @@ export default class MultimediaCollectionPlugin extends Plugin
 			}
 
 
+			// play the video at giving time
+			const jumpToTime = (videoElement: HTMLVideoElement, time: number) =>
+			{
+				videoElement.currentTime = time;
+				videoElement.play();
+			};
+
+
+
 
 
 			let rootMediaView = el.createEl('div', { cls: 'rootMediaView' });
-			let pathTemp = mediaDataCur[6];
+			let pathTemp = mediaDataCur[7];
 			let currentMediaPanel = rootMediaView.createEl('div', { cls: 'currentMediaPanel' });
 			let titlePanel = currentMediaPanel.createEl('div', { cls: 'titlePanel' });
 			let mediaContainer = currentMediaPanel.createEl('div', { cls: 'mediaContainer' });
@@ -173,11 +256,11 @@ export default class MultimediaCollectionPlugin extends Plugin
 			let currentMedia = mediaContainer.createEl('div', { cls: 'currentMedia' });
 			let btnNext = mediaContainer.createEl('button', { text: '>>', cls: 'btnNext' });
 			// show the picture
-			let currentMediaImg = currentMedia.createEl('img', { attr: { src: mediaDataCur[6] } });
+			let currentMediaImg = currentMedia.createEl('img', { attr: { src: mediaDataCur[7] } });
 			// show the video
 			//let currentMediaVideo = currentMedia.createEl('video', { cls: 'currentMediaVideo', attr: { controls: true, autoplay: true, muted: true, loop: true } });
 			let currentMediaVideo = currentMedia.createEl('video', { cls: 'currentMediaVideo', attr: { controls: true, autoplay: this.settings.video.autoPlay, muted: this.settings.video.muted, loop: this.settings.video.loop } });
-			let videoSource = currentMediaVideo.createEl('source', { attr: { src: mediaDataCur[6], type: 'video/mp4' } });
+			let videoSource = currentMediaVideo.createEl('source', { attr: { src: mediaDataCur[7], type: 'video/mp4' } });
 			// hide the video at first
 			currentMediaVideo.style.display = 'none';
 			// add details info panel , will show the details of the media, such as note of this media
@@ -197,9 +280,9 @@ export default class MultimediaCollectionPlugin extends Plugin
 				// // refresh the media data current 
 				mediaDataCur = mediasData[_indexMedia];
 				// // refresh the media title 
-				// currentMediaPanel.setText(mediaDataCur[5]);
+				// currentMediaPanel.setText(mediaDataCur[6]);
 				// // refresh the media path for the img
-				// pathTemp = mediaDataCur[6];
+				// pathTemp = mediaDataCur[7];
 				// // refresh the img src
 				// currentMediaImg.setAttribute('src', '');
 
@@ -207,11 +290,11 @@ export default class MultimediaCollectionPlugin extends Plugin
 
 
 				//  confirm if the media is video or not
-				if (mediaDataCur[2].endsWith('.mp4'))
+				if (mediaDataCur[3].endsWith('.mp4'))
 				{
 					currentMediaImg.style.display = 'none';
 					currentMediaVideo.style.display = 'block';
-					videoSource.setAttribute('src', mediaDataCur[6]);
+					videoSource.setAttribute('src', mediaDataCur[7]);
 
 					// use the vedio settings 
 					currentMediaVideo.autoplay = this.settings.video.autoPlay;
@@ -223,18 +306,18 @@ export default class MultimediaCollectionPlugin extends Plugin
 				{
 					currentMediaImg.style.display = 'block';
 					currentMediaVideo.style.display = 'none';
-					currentMediaImg.setAttribute('src', mediaDataCur[6]);
+					currentMediaImg.setAttribute('src', mediaDataCur[7]);
 				}
 
-				titlePanel.setText(`[${mediaDataCur[5]}] <${indexMedia}/${mediasData.length}>`);
+				titlePanel.setText(`[${mediaDataCur[6]}] <${indexMedia}/${mediasData.length}>`);
 
 				// show the detail of the media
 				if (this.settings.detail.enableDetail)
 				{
 					detailPanel.style.display = 'block';
-					//detailPanel.setText(`name:${mediaDataCur[5]}\nPathFull:${mediaDataCur[6]}`);
-					//detailPanel.setText(`${mediaDataCur[7]}`);
-					detailPanel.innerHTML = `${mediaDataCur[7]}`;
+					//detailPanel.setText(`name:${mediaDataCur[6]}\nPathFull:${mediaDataCur[7]}`);
+					//detailPanel.setText(`${mediaDataCur[8]}`);
+					detailPanel.innerHTML = `${mediaDataCur[8]}`;
 				}
 				else
 				{
@@ -242,20 +325,20 @@ export default class MultimediaCollectionPlugin extends Plugin
 				}
 
 				// currentMediaImg.setAttribute('src', pathTemp);
-				// currentMediaImg.setAttribute('src', mediaDataCur[6]);
+				// currentMediaImg.setAttribute('src', mediaDataCur[7]);
 
 
 
 
 				// currentMediaImg.setAttribute('src', pathTemp);
-				// currentMediaPanel.setText(mediaDataCur[5]);
+				// currentMediaPanel.setText(mediaDataCur[6]);
 				// currentMediaImg = currentMedia.createEl('img', { attr: { src: pathTemp } });
 
 				// // 重新创建图片元素
 				// currentMedia.innerHTML = ''; // 清空当前媒体内容
 				// currentMediaImg = currentMedia.createEl('img', { attr: { src: pathTemp } });
 
-				console.log(`Show media[${_indexMedia}] ${mediaDataCur[5]} fullPath[${mediaDataCur[2]}] recsPath:${pathTemp} 之前是[${indexMedia}] ${mediasData[indexMedia][5]} ${mediasData[indexMedia][6]} fullPath[${mediasData[indexMedia][2]}]`);
+				console.log(`Show media[${_indexMedia}] ${mediaDataCur[6]} fullPath[${mediaDataCur[3]}] recsPath:${pathTemp} 之前是[${indexMedia}] ${mediasData[indexMedia][6]} ${mediasData[indexMedia][7]} fullPath[${mediasData[indexMedia][3]}]`);
 				// refresh the indexMedia
 				indexMedia = _indexMedia;
 			};
@@ -313,7 +396,7 @@ export default class MultimediaCollectionPlugin extends Plugin
 		// 	editorCallback: (editor: Editor, view: MarkdownView) => {
 		// 		console.log(editor.getSelection());
 		// 		editor.replaceSelection('Sample Editor Command');
-		// 	}
+		// 	});
 		// });
 		// // This adds a complex command that can check whether the current state of the app allows execution of the command
 		// this.addCommand({
@@ -437,6 +520,23 @@ class SampleSettingTab extends PluginSettingTab
 						await this.plugin.saveSettings();
 					});
 			});
+
+
+
+		new Setting(containerEl)
+			.setName('Pause after skip')
+			.setDesc('Open it  , If you want to see the frame of the timestamp!')
+			.addToggle((toggle) =>
+			{
+				toggle.setValue(this.plugin.settings.video.pausePlayAfterSkip)
+					.onChange(async (value) =>
+					{
+						this.plugin.settings.video.pausePlayAfterSkip = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+
 
 		new Setting(containerEl)
 			.setName('Loop')

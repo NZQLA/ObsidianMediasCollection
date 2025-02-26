@@ -40,6 +40,13 @@ Then I Find some plugins can do it , but they are not so good for me , so I crea
 	[[xxxx.mp4]] // This is a video I took yesterday \n I like it so much
 	```
 ```
+- For the video , you can skip the time you want easy by add some  timespan int the note, just like 
+```md
+[[../xxx/AAA.mp4]]\\00:00:15 XXXXXXXX /n 01:30:06 something you wang say at this time  
+```
+> [!tip] 
+if you want the video paused after skip to the time you want , just open the option in the plugin settings under video
+
 
 ## Funding URL
 You can find me at [GitHub](https://github.com/NZQLA)

@@ -57,3 +57,25 @@ show the detail panel at the bottom of the media
     width: 100%;
     margin-top: 10px;
 }
+
+/*
+some effect for the video time span in the detail panel
+*/
+.video-timestamp {
+    color: #4761d6;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.video-timestamp:hover {
+    color: rgb(10, 107, 233);
+}
+
+.video-timestamp:active {
+    color: rgb(255, 217, 0);
+}
+
+.video-timestamp:visited {
+    color: rgb(22, 84, 126);
+}
+
