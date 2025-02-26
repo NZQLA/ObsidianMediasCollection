@@ -1,10 +1,10 @@
 {
-	"id": "MultimediaCollection_id",
-	"name": "MultimediaCollection",
-	"version": "1.0.0",
+	"id": "medias-collection",
+	"name": "MediasCollection",
+	"version": "1.0.5",
 	"minAppVersion": "0.15.0",
 	"description": "A plugin to preview multimedia Collection files in Obsidian.",
-	"author": "NZQLA",
+	"author": "FreshWind",
 	"authorUrl": "https://github.com/NZQLA",
 	"fundingUrl": "https://github.com/NZQLA",
 	"isDesktopOnly": false
