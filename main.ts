@@ -305,7 +305,6 @@ export default class MediasCollectionPlugin extends Plugin
 
 
 			let rootMediaView = el.createEl('div', { cls: 'rootMediaView' });
-			let pathTemp = mediaDataCur.recsPath;
 			let currentMediaPanel = rootMediaView.createEl('div', { cls: 'currentMediaPanel' });
 			let titlePanel = currentMediaPanel.createEl('div', { cls: 'titlePanel' });
 			let mediaContainer = currentMediaPanel.createEl('div', { cls: 'mediaContainer' });
@@ -316,6 +315,7 @@ export default class MediasCollectionPlugin extends Plugin
 			let currentMedia = mediaContainer.createEl('div', { cls: 'currentMedia' });
 			// show one button at the right top of  the media , for toggle the detail info , and use one emoji(info:ℹ) for the button
 			let btnDetail = mediaContainer.createEl('button', { cls: 'btnDetail' });
+			//let btnDetail = titlePanel.createEl('button', { cls: 'btnDetail' });
 			//btnDetail.innerHTML = `<img src="${imgInfo}" alt="info" width="20" height="20">`;
 			btnDetail.innerHTML = `<img src="${imgInfo}" alt="info">`;
 
@@ -335,6 +335,12 @@ export default class MediasCollectionPlugin extends Plugin
 
 
 
+			// #region some functions for settings the media panel
+			// refresh the media panel
+			const refreshMediaPanel = () =>
+			{
+				showMediaAtIndex(indexMedia);
+			}
 
 			// show the media  at giving index
 			const showMediaAtIndex = (_indexMedia: number) =>
@@ -379,18 +385,7 @@ export default class MediasCollectionPlugin extends Plugin
 				titlePanel.setText(`[${mediaDataCur.Name}] <${indexMedia}/${mediasData.length}>`);
 
 				// show the detail of the media
-				if (this.settings.detail.enableDetail)
-				{
-					detailPanel.style.display = 'block';
-					//detailPanel.setText(`name:${mediaDataCur[6]}\nPathFull:${mediaDataCur.recsPath}`);
-					//detailPanel.setText(`${mediaDataCur[8]}`);
-					detailPanel.innerHTML = `${mediaDataCur.detailInfo}`;
-				}
-				else
-				{
-					detailPanel.style.display = 'none';
-				}
-
+				refreshDetailPanel();
 				// currentMediaImg.setAttribute('src', pathTemp);
 				// currentMediaImg.setAttribute('src', mediaDataCur.recsPath);
 
@@ -413,7 +408,7 @@ export default class MediasCollectionPlugin extends Plugin
 				refreshBtnLastNextState();
 			};
 
-
+			// refresh the last and next button state
 			const refreshBtnLastNextState = () =>
 			{
 				let shouldDisableLast = indexMedia <= 0;
@@ -439,17 +434,12 @@ export default class MediasCollectionPlugin extends Plugin
 				}
 			}
 
-			// refresh the media panel
-			const refreshMediaPanel = () =>
-			{
-				showMediaAtIndex(indexMedia);
-			}
-
 			// show or hide the detail panel at the detailSetting
-			const refreshDetailPanelState = () =>
+			const refreshDetailPanel = () =>
 			{
 				if (this.settings.detail.enableDetail)
 				{
+					detailPanel.innerHTML = `${mediaDataCur.detailInfo}`;
 					detailPanel.style.display = 'block';
 					btnDetail.classList.remove('disabled');
 				}
@@ -460,11 +450,14 @@ export default class MediasCollectionPlugin extends Plugin
 				}
 
 			}
+			// #endregion
+
 
 
 			// refresh the media panel at first
 			refreshMediaPanel();
 
+			// #region Set call back for btns
 			// Set call back for btns 
 			btnLast.onclick = () =>
 			{
@@ -479,9 +472,9 @@ export default class MediasCollectionPlugin extends Plugin
 			btnDetail.onclick = () =>
 			{
 				this.settings.detail.enableDetail = !this.settings.detail.enableDetail;
-				refreshDetailPanelState();
+				refreshDetailPanel();
 			}
-
+			// #endregion
 
 			// log all lines 
 			if (this.settings.log.ShowAllFilesLoaded)

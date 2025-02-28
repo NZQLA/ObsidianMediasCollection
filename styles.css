@@ -28,12 +28,14 @@ If your plugin does not need CSS, delete this file.
     align-items: center;
     width: 100%;
     position: relative; /* 添加这一行 */
+    min-height: 150px; /* 设置最低高度，根据需要调整 */
 }
 
 .btnDetail {
     position: absolute;
-    top: 10px; /* 根据需要调整 */
-    right: 60px; /* 根据需要调整 */
+    top: 0px; /* 根据需要调整 */
+    right: 0px; /* 根据需要调整 */
+    z-index: 100;
     width: 40px; /* 设置按钮的宽度 */
     height: 40px; /* 设置按钮的高度 */
     padding: 5px; /* 调整按钮的内边距 */
@@ -65,8 +67,23 @@ If your plugin does not need CSS, delete this file.
 
 .btnLast,
 .btnNext {
-    position: relative;
-    top: 0;
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 10;
+    width: 40px; /* 设置按钮的宽度 */
+    height: 40px; /* 设置按钮的高度 */
+    padding: 5px; /* 调整按钮的内边距 */
+    font-size: 25px; /* 调整按钮的字体大小 */
+    line-height: 30px; /* 确保文本在按钮内垂直居中 */
+}
+
+.btnLast {
+    left: 0px;
+}
+
+.btnNext {
+    right: 0px; 
 }
 
 
