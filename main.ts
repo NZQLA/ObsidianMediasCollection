@@ -2,6 +2,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-empty-interface */
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian';
+//import { info } from 'lucide';
+
+
 
 // Remember to rename these classes and interfaces!
 
@@ -72,8 +75,10 @@ const DEFAULT_SETTINGS: IMediasCollectionSettings =
 }
 // #endregion
 
-
-
+// some imgs for buttons 
+const imgInfo = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5Y2UzODIiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1pbmZvIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxwYXRoIGQ9Ik0xMiAxNnYtNCIvPjxwYXRoIGQ9Ik0xMiA4aC4wMSIvPjwvc3ZnPg==';
+const imgRight = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jaGV2cm9ucy1yaWdodCI+PHBhdGggZD0ibTYgMTcgNS01LTUtNSIvPjxwYXRoIGQ9Im0xMyAxNyA1LTUtNS01Ii8+PC9zdmc+';
+const imgLeft = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmZmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1jaGV2cm9ucy1sZWZ0Ij48cGF0aCBkPSJtMTEgMTctNS01IDUtNSIvPjxwYXRoIGQ9Im0xOCAxNy01LTUgNS01Ii8+PC9zdmc+';
 
 // #region data
 // The media data info; 0: originPath, 1: mediaType, 2: purePath, 3: fullPath, 4: isValid, 5: mediaFile
@@ -305,9 +310,18 @@ export default class MediasCollectionPlugin extends Plugin
 			let titlePanel = currentMediaPanel.createEl('div', { cls: 'titlePanel' });
 			let mediaContainer = currentMediaPanel.createEl('div', { cls: 'mediaContainer' });
 
-			let btnLast = mediaContainer.createEl('button', { text: '<<', cls: 'btnLast' });
+			//let btnLast = mediaContainer.createEl('button', { text: '<<', cls: 'btnLast' });
+			let btnLast = mediaContainer.createEl('button', { cls: 'btnLast' });
+			btnLast.innerHTML = `<img src="${imgLeft}" alt="left">`;
 			let currentMedia = mediaContainer.createEl('div', { cls: 'currentMedia' });
-			let btnNext = mediaContainer.createEl('button', { text: '>>', cls: 'btnNext' });
+			// show one button at the right top of  the media , for toggle the detail info , and use one emoji(info:ℹ) for the button
+			let btnDetail = mediaContainer.createEl('button', { cls: 'btnDetail' });
+			//btnDetail.innerHTML = `<img src="${imgInfo}" alt="info" width="20" height="20">`;
+			btnDetail.innerHTML = `<img src="${imgInfo}" alt="info">`;
+
+			//let btnNext = mediaContainer.createEl('button', { text: '>>', cls: 'btnNext' });
+			let btnNext = mediaContainer.createEl('button', { cls: 'btnNext' });
+			btnNext.innerHTML = `<img src="${imgRight}" alt="right">`;
 			// show the picture
 			let currentMediaImg = currentMedia.createEl('img', { attr: { src: mediaDataCur.recsPath } });
 			// show the video
@@ -395,13 +409,58 @@ export default class MediasCollectionPlugin extends Plugin
 
 				// refresh the indexMedia
 				indexMedia = _indexMedia;
+
+				refreshBtnLastNextState();
 			};
+
+
+			const refreshBtnLastNextState = () =>
+			{
+				let shouldDisableLast = indexMedia <= 0;
+				let shouldDisableNext = indexMedia >= mediasData.length - 1;
+				btnLast.disabled = shouldDisableLast;
+				btnNext.disabled = shouldDisableNext;
+				if (btnLast.disabled)
+				{
+					btnLast.classList.add('disabled');
+				}
+				else
+				{
+					btnLast.classList.remove('disabled');
+				}
+
+				if (btnNext.disabled)
+				{
+					btnNext.classList.add('disabled');
+				}
+				else
+				{
+					btnNext.classList.remove('disabled');
+				}
+			}
 
 			// refresh the media panel
 			const refreshMediaPanel = () =>
 			{
 				showMediaAtIndex(indexMedia);
 			}
+
+			// show or hide the detail panel at the detailSetting
+			const refreshDetailPanelState = () =>
+			{
+				if (this.settings.detail.enableDetail)
+				{
+					detailPanel.style.display = 'block';
+					btnDetail.classList.remove('disabled');
+				}
+				else
+				{
+					detailPanel.style.display = 'none';
+					btnDetail.classList.add('disabled');
+				}
+
+			}
+
 
 			// refresh the media panel at first
 			refreshMediaPanel();
@@ -416,6 +475,12 @@ export default class MediasCollectionPlugin extends Plugin
 			{
 				showMediaAtIndex(indexMedia + 1);
 			};
+
+			btnDetail.onclick = () =>
+			{
+				this.settings.detail.enableDetail = !this.settings.detail.enableDetail;
+				refreshDetailPanelState();
+			}
 
 
 			// log all lines 

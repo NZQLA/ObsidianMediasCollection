@@ -26,20 +26,29 @@ Then I Find some plugins can do it , but they are not so good for me , so I crea
 > The video file should be  endwith `.mp4` 
 
 ## Some Features
+### Show the last  / next media just by click the button at left / right of the media panel
+> [!tip]
+> The button will be disabled if there is no last / next media ! For example :<br/>
+> - There is only one media at total.
+> - The current media is the first , so the last button will be disabled.
+> - The current media is the last , so the next button will be disabled.
+
+
 ### Show notes at the bottom for any media you want 
 - Just add note behind the media path with `//` , 
-- If you want show the note at multiple lines  , just  use `<br>` / `\n` at the end of the line.
-- In fact , the note you add will be show at html, so you can use any html code you want ! And  you can use some content edit plugin auto add the html code
-    - [Editing ToolBar](https://github.com/PKM-er/obsidian-editing-toolbar) 
-	- [Text Format](https://github.com/Benature/obsidian-text-format)
-	- ...
-- You Can Disable the note by setting the plugin setting at any time without delete the note or restart the obsidian.
 ```md
 	```medias
 	[[xxxx.png]] // This is a picture I took yesterday \n I like it so much
 	[[xxxx.mp4]] // This is a video I took yesterday \n I like it so much
 	```
 ```
+- If you want show the note at multiple lines  , just  use `<br>` / `\n` at the end of the line.
+- In fact , the note you add will be show at html, so you can use any html code you want ! And  you can use some content edit plugin auto add the html code
+    - [Editing ToolBar](https://github.com/PKM-er/obsidian-editing-toolbar) 
+	- [Text Format](https://github.com/Benature/obsidian-text-format)
+	- ...
+- You can toggle the detail of current media by click the button(at the top right of the media panel) at anytime!<br/>
+Of cause  you Can config if show the detail for default at the plugin settings .
 - For the video , you can skip the time you want easy by add some  timespan int the note, just like 
 ```md
 [[../xxx/AAA.mp4]]\\00:00:15 XXXXXXXX /n 01:30:06 something you wang say at this time  

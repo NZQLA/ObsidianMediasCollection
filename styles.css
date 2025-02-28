@@ -27,7 +27,29 @@ If your plugin does not need CSS, delete this file.
     justify-content: space-between;
     align-items: center;
     width: 100%;
+    position: relative; /* 添加这一行 */
 }
+
+.btnDetail {
+    position: absolute;
+    top: 10px; /* 根据需要调整 */
+    right: 60px; /* 根据需要调整 */
+    width: 40px; /* 设置按钮的宽度 */
+    height: 40px; /* 设置按钮的高度 */
+    padding: 5px; /* 调整按钮的内边距 */
+    font-size: 25px; /* 调整按钮的字体大小 */
+    line-height: 30px; /* 确保文本在按钮内垂直居中 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.btnDetail.disabled img ,.btnLast.disabled ,.btnNext.disabled {
+    filter: grayscale(100%);
+    opacity: 0.5;
+}
+
+
 
 .currentMedia {
     flex-grow: 1;
@@ -46,6 +68,7 @@ If your plugin does not need CSS, delete this file.
     position: relative;
     top: 0;
 }
+
 
 /*
 show the detail panel at the bottom of the media
